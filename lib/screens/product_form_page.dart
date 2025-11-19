@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:provider/provider.dart';
+import 'package:pbp_django_auth/pbp_django_auth.dart';
+import 'package:blaugrana_shop/screens/menu.dart';
 
 class ProductFormPage extends StatefulWidget {
   const ProductFormPage({super.key});
@@ -21,11 +25,12 @@ class _ProductFormPageState extends State<ProductFormPage> {
     'Jersey',
     'Accessories',
     'Ball',
-    'Others'
+    'Others',
   ];
 
   @override
   Widget build(BuildContext context) {
+    final request = context.watch<CookieRequest>();
     return Scaffold(
       appBar: AppBar(
         title: const Center(child: Text('Add New Product')),
@@ -142,12 +147,16 @@ class _ProductFormPageState extends State<ProductFormPage> {
                         borderRadius: BorderRadius.circular(5.0),
                       ),
                     ),
-                    value: _category,
+                    initialValue: _category,
                     items: _categories
-                        .map((cat) => DropdownMenuItem(
-                              value: cat,
-                              child: Text(cat[0].toUpperCase() + cat.substring(1)),
-                            ))
+                        .map(
+                          (cat) => DropdownMenuItem(
+                            value: cat,
+                            child: Text(
+                              cat[0].toUpperCase() + cat.substring(1),
+                            ),
+                          ),
+                        )
                         .toList(),
                     onChanged: (String? newValue) {
                       setState(() {
@@ -176,7 +185,7 @@ class _ProductFormPageState extends State<ProductFormPage> {
                     validator: (String? value) {
                       if (value == null || value.isEmpty) {
                         return "Product thumbnail URL cannot be empty!";
-                      } 
+                      }
                       if (!Uri.parse(value).isAbsolute) {
                         return "Masukkan URL yang valid (harus diawali http atau https)!";
                       }
@@ -206,43 +215,42 @@ class _ProductFormPageState extends State<ProductFormPage> {
                     padding: const EdgeInsets.all(12.0),
                     child: ElevatedButton(
                       style: ButtonStyle(
-                        backgroundColor:
-                            WidgetStateProperty.all(Colors.indigo),
+                        backgroundColor: WidgetStateProperty.all(Colors.indigo),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (_formKey.currentState!.validate()) {
-                          showDialog(
-                            context: context,
-                            builder: (context) {
-                              return AlertDialog(
-                                title:
-                                    const Text('Product Saved Successfully'),
-                                content: SingleChildScrollView(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text('Name: $_name'),
-                                      Text('Price: $_price'),
-                                      Text('Description: $_description'),
-                                      Text('Category: $_category'),
-                                      Text('Thumbnail: $_thumbnail'),
-                                      Text('Is Featured: ${_isFeatured ? "Yes" : "No"}'),
-                                    ],
-                                  ),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    child: const Text('OK'),
-                                    onPressed: () {
-                                      Navigator.pop(context);
-                                      _formKey.currentState!.reset();
-                                    },
-                                  ),
-                                ],
-                              );
-                            },
+                          // TODO: Replace the URL with your app's URL
+                          // To connect Android emulator with Django on localhost, use URL http://10.0.2.2/
+                          // If you using chrome,  use URL http://localhost:8000
+                          
+                          final response = await request.postJson(
+                            "http://127.0.0.1:8000/create-flutter/",
+                            jsonEncode({
+                              "name": _name,
+                              "description": _description,
+                              "thumbnail": _thumbnail,
+                              "category": _category,
+                              "is_featured": _isFeatured,
+                            }),
                           );
+                          if (context.mounted) {
+                            if (response['status'] == 'success') {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(const SnackBar(
+                                content: Text("News successfully saved!"),
+                              ));
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => MyHomePage()),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(const SnackBar(
+                                content: Text("Something went wrong, please try again."),
+                              ));
+                            }
+                          }
                         }
                       },
                       child: const Text(
